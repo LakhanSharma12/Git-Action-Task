@@ -14,30 +14,30 @@ on:
 
 
   
-
 jobs:
-  test:
-    runs-on: [ubuntu-latest, windows-latest, macOS-latest]
-    
+  deploy:
+    name: deploy
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [12.x]
     steps:
-      
-    - name: Check Out Code
+    - name: Checkout
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
       uses: actions/checkout@v2
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v2
+      
+    - uses: actions/checkout@v2
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v1
       with:
-        node-version: '18.x'# You can specify the Node.js version you need
 
-    - name: Install Dependencies
-      run: npm install
+        node-version: ${{ matrix.node-version }}
 
-    - name: Run Tests
-      run: npm test
-  
-  if_merged:
-    if: github.event.pull_request.merged == true
-    runs-on: ubuntu-latest
-    steps:
-    - run: |
-        echo The branches are merged was merged
+    - name: serverless deploy
+      uses: serverless/github-action@master
+      with:
+        args: deploy --stage dev --region ap-south-1
+
+
