@@ -1,0 +1,256 @@
+service: Authentication-API
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  stage: dev
+  region: ap-south-1
+  logs:
+    frameworkLambda: true
+  environment:
+    AVATAR_BUCKET_NAME:
+      Fn::ImportValue: !Sub hypetask-avtar-bucket
+    AvtarTable:
+      Fn::ImportValue: !Sub hypetask-avatar-table
+    USER_TABLE_NAME:
+      Fn::ImportValue: !Sub UserTable
+    HypeCardUserPoolId:
+      Fn::ImportValue: !Sub HypeCardUserPoolId
+    HypeCardUserPoolClientId:
+      Fn::ImportValue: !Sub HypeCardUserPoolClientId
+    UserTableArn:
+      Fn::ImportValue: !Sub UserTableArn
+    
+
+custom:
+  AVATAR_BUCKET_NAME:
+    Fn::ImportValue: !Sub hypetask-avtar-bucket
+  UserTable:
+    Fn::ImportValue: !Sub UserTable
+  ImageBucket:
+    Fn::ImportValue: !Sub hypetask-avtar-bucket
+  AvtarTable:
+    Fn::ImportValue: !Sub AvatarTable
+  HypeCardUserPoolId:
+      Fn::ImportValue: !Sub HypeCardUserPoolId
+  
+  HypecardUserPoolName: 
+    Fn::ImportValue: HypeCardUserPoolName
+  UserTableArn:
+    Fn::ImportValue: UserTableArn
+  SnsCallerArn:
+    Fn::ImportValue: SnsCallerArn
+
+  AssociateWaf:
+    name: Hype-Dev-ACL
+    region: ap-south-1
+resources:
+  Resources:
+
+   
+
+
+    LambdaExecutionRole: # Define an IAM role for your Lambda function
+      Type: AWS::IAM::Role
+      Properties:
+        RoleName: ${self:provider.stage}-lambdaRole
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - lambda.amazonaws.com
+              Action:
+                - sts:AssumeRole
+        Policies:
+          - PolicyName: LambdaCognitoPermissions
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - cognito-idp:ListUsers
+                    - cognito-idp:AdminCreateUser
+                    - cognito-idp:AdminGetUser
+                    - cognito-idp:AdminDeleteUser
+                    - cognito-idp:AdminUpdateUserAttributes
+                    - cognito-idp:AdminAddUserToGroup
+                    - logs:CreateLogGroup
+                    - logs:CreateLogStream
+                    - logs:PutLogEvents
+                    # Add other Cognito permissions as needed
+                  Resource: "*"
+
+    SaveUserDb:
+      Type: AWS::IAM::Role
+      Properties:
+        RoleName: SaveUserDb
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - lambda.amazonaws.com
+              Action:
+                - sts:AssumeRole
+        Policies:
+          - PolicyName: SaveUserDbPolicy
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - dynamodb:GetItem
+                    - dynamodb:PutItem
+                    
+                  Resource:
+                     ${self:custom.UserTableArn}
+                        
+  
+
+functions: 
+  Register:
+    handler: functions/Register.Register
+    role: LambdaExecutionRole
+    events:
+      - http:
+          path:  /Register
+          method: post
+          cors: true
+      - cognitoUserPool:
+          pool: HYPECARD-USERS
+          trigger: PreSignUp
+          
+    package:
+      individually: true
+      patterns:
+        - '!node_modules/**'
+        - '!functions/**'
+        - 'functions/Register.mjs'
+  
+  EmailVerify:
+    handler: functions/triggers/EmailVerify.EmailVerify
+    events:
+      - cognitoUserPool:
+          pool: ${self:custom.HypecardUserPoolName}
+          trigger: PreSignUp
+          existing: true
+
+    package:
+      individually: true
+      patterns:
+        - '!node_modules/**'
+        - '!functions/**'
+        - 'functions/triggers/EmailVerify.mjs'
+
+
+  SaveUserDb:
+    handler: functions/triggers/SaveUserDb.SaveUserDb
+    role: SaveUserDb
+
+    events:
+      - cognitoUserPool:
+          pool: ${self:custom.HypecardUserPoolName}
+          trigger: PostConfirmation
+          existing: true
+
+    package:
+      individually: true
+      patterns:
+        - '!node_modules/**'
+        - '!functions/**'
+        - 'functions/triggers/SaveUserDb.mjs'
+        
+
+
+  Login:
+    handler: functions/Login.Login
+    role: LambdaExecutionRole
+    events:
+      - http:
+          path:  /Login
+          method: post
+          cors: true
+      - cognitoUserPool:
+          pool: HYPECARD-USERS
+          trigger: PreAuthentication
+          
+    package:
+      individually: true
+      patterns:
+        - '!node_modules/**'
+        - '!functions/**'
+        - 'functions/Login.mjs'
+
+#----Authetication Triggers ------#
+
+  DefineAuthChallenge:
+    handler: functions/triggers/AuthenticationTriggers/DefineAuthChallenge.DefineAuthChallenge
+    events:
+      - cognitoUserPool:
+          role: LambdaExecutionRole
+          pool: ${self:custom.HypecardUserPoolName}
+          trigger: DefineAuthChallenge
+          existing: true
+
+    package:
+      individually: true
+      patterns:
+        - '!node_modules/**'
+        - '!functions/**'
+        - 'functions/triggers/AuthenticationTriggers/DefineAuthChallenge.mjs'
+
+  CreateAuthChallenge:
+    handler: functions/triggers/AuthenticationTriggers/CreateAuthChallenge.CreateAuthChallenge
+    events:
+      - cognitoUserPool:
+          pool: ${self:custom.HypecardUserPoolName}
+          trigger: CreateAuthChallenge
+          existing: true
+
+    package:
+      individually: true
+      patterns:
+        - '!node_modules/**'
+        - '!functions/**'
+        - 'functions/triggers/AuthenticationTriggers/CreateAuthChallenge.mjs'
+  VerifyAuthChallengeResponse:
+    handler: functions/triggers/AuthenticationTriggers/VerifyAuthChallengeResponse.VerifyAuthChallengeResponse
+    role: LambdaExecutionRole
+    events:
+      - cognitoUserPool:
+          pool: ${self:custom.HypecardUserPoolName}
+          trigger: VerifyAuthChallengeResponse
+          existing: true
+
+    package:
+      individually: true
+      patterns:
+        - '!node_modules/**'
+        - '!functions/**'
+        - 'functions/triggers/AuthenticationTriggers/VerifyAuthChallengeResponse.mjs'
+
+        
+  RespondtoAuthChellenge:
+    handler: functions/triggers/RespondtoAuthChellenge.RespondtoAuthChellenge
+    role: LambdaExecutionRole
+    events:
+      - http:
+          path:  /RespondtoAuthChellenge
+          method: post
+          cors: true
+    package:
+      individually: true
+      patterns:
+        - '!node_modules/**'
+        - '!functions/**'
+        - 'functions/triggers/RespondtoAuthChellenge.mjs'
+
+
+plugins:
+  - serverless-offline
+  - serverless-associate-waf
+                      
+

@@ -1,0 +1,2276 @@
+{
+  "service": {
+    "service": "Authentication-API",
+    "serviceObject": {
+      "name": "Authentication-API"
+    },
+    "provider": {
+      "name": "aws",
+      "runtime": "nodejs18.x",
+      "stage": "dev",
+      "region": "ap-south-1",
+      "logs": {
+        "frameworkLambda": true
+      },
+      "environment": {
+        "AVATAR_BUCKET_NAME": {
+          "Fn::ImportValue": {
+            "Fn::Sub": "hypetask-avtar-bucket"
+          }
+        },
+        "AvtarTable": {
+          "Fn::ImportValue": {
+            "Fn::Sub": "hypetask-avatar-table"
+          }
+        },
+        "USER_TABLE_NAME": {
+          "Fn::ImportValue": {
+            "Fn::Sub": "UserTable"
+          }
+        },
+        "HypeCardUserPoolId": {
+          "Fn::ImportValue": {
+            "Fn::Sub": "HypeCardUserPoolId"
+          }
+        },
+        "HypeCardUserPoolClientId": {
+          "Fn::ImportValue": {
+            "Fn::Sub": "HypeCardUserPoolClientId"
+          }
+        },
+        "UserTableArn": {
+          "Fn::ImportValue": {
+            "Fn::Sub": "UserTableArn"
+          }
+        }
+      },
+      "versionFunctions": true,
+      "compiledCloudFormationTemplate": {
+        "AWSTemplateFormatVersion": "2010-09-09",
+        "Description": "The AWS CloudFormation template for this Serverless application",
+        "Resources": {
+          "ServerlessDeploymentBucket": {
+            "Type": "AWS::S3::Bucket",
+            "Properties": {
+              "BucketEncryption": {
+                "ServerSideEncryptionConfiguration": [
+                  {
+                    "ServerSideEncryptionByDefault": {
+                      "SSEAlgorithm": "AES256"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "ServerlessDeploymentBucketPolicy": {
+            "Type": "AWS::S3::BucketPolicy",
+            "Properties": {
+              "Bucket": {
+                "Ref": "ServerlessDeploymentBucket"
+              },
+              "PolicyDocument": {
+                "Statement": [
+                  {
+                    "Action": "s3:*",
+                    "Effect": "Deny",
+                    "Principal": "*",
+                    "Resource": [
+                      {
+                        "Fn::Join": [
+                          "",
+                          [
+                            "arn:",
+                            {
+                              "Ref": "AWS::Partition"
+                            },
+                            ":s3:::",
+                            {
+                              "Ref": "ServerlessDeploymentBucket"
+                            },
+                            "/*"
+                          ]
+                        ]
+                      },
+                      {
+                        "Fn::Join": [
+                          "",
+                          [
+                            "arn:",
+                            {
+                              "Ref": "AWS::Partition"
+                            },
+                            ":s3:::",
+                            {
+                              "Ref": "ServerlessDeploymentBucket"
+                            }
+                          ]
+                        ]
+                      }
+                    ],
+                    "Condition": {
+                      "Bool": {
+                        "aws:SecureTransport": false
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "RegisterLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "LogGroupName": "/aws/lambda/Authentication-API-dev-Register"
+            }
+          },
+          "EmailVerifyLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "LogGroupName": "/aws/lambda/Authentication-API-dev-EmailVerify"
+            }
+          },
+          "SaveUserDbLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "LogGroupName": "/aws/lambda/Authentication-API-dev-SaveUserDb"
+            }
+          },
+          "LoginLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "LogGroupName": "/aws/lambda/Authentication-API-dev-Login"
+            }
+          },
+          "DefineAuthChallengeLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "LogGroupName": "/aws/lambda/Authentication-API-dev-DefineAuthChallenge"
+            }
+          },
+          "CreateAuthChallengeLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "LogGroupName": "/aws/lambda/Authentication-API-dev-CreateAuthChallenge"
+            }
+          },
+          "VerifyAuthChallengeResponseLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "LogGroupName": "/aws/lambda/Authentication-API-dev-VerifyAuthChallengeResponse"
+            }
+          },
+          "RespondtoAuthChellengeLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "LogGroupName": "/aws/lambda/Authentication-API-dev-RespondtoAuthChellenge"
+            }
+          },
+          "IamRoleLambdaExecution": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+              "AssumeRolePolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Principal": {
+                      "Service": [
+                        "lambda.amazonaws.com"
+                      ]
+                    },
+                    "Action": [
+                      "sts:AssumeRole"
+                    ]
+                  }
+                ]
+              },
+              "Policies": [
+                {
+                  "PolicyName": {
+                    "Fn::Join": [
+                      "-",
+                      [
+                        "Authentication-API",
+                        "dev",
+                        "lambda"
+                      ]
+                    ]
+                  },
+                  "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                      {
+                        "Effect": "Allow",
+                        "Action": [
+                          "logs:CreateLogStream",
+                          "logs:CreateLogGroup",
+                          "logs:TagResource"
+                        ],
+                        "Resource": [
+                          {
+                            "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/Authentication-API-dev*:*"
+                          }
+                        ]
+                      },
+                      {
+                        "Effect": "Allow",
+                        "Action": [
+                          "logs:PutLogEvents"
+                        ],
+                        "Resource": [
+                          {
+                            "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/Authentication-API-dev*:*:*"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              ],
+              "Path": "/",
+              "RoleName": {
+                "Fn::Join": [
+                  "-",
+                  [
+                    "Authentication-API",
+                    "dev",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    "lambdaRole"
+                  ]
+                ]
+              }
+            }
+          },
+          "RegisterLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "Code": {
+                "S3Bucket": {
+                  "Ref": "ServerlessDeploymentBucket"
+                },
+                "S3Key": "serverless/Authentication-API/dev/1696996185109-2023-10-11T03:49:45.109Z/Register.zip"
+              },
+              "Handler": "functions/Register.Register",
+              "Runtime": "nodejs18.x",
+              "FunctionName": "Authentication-API-dev-Register",
+              "MemorySize": 1024,
+              "Timeout": 6,
+              "Environment": {
+                "Variables": {
+                  "AVATAR_BUCKET_NAME": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"AVATAR_BUCKET_NAME\"]"
+                  },
+                  "AvtarTable": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"AvtarTable\"]"
+                  },
+                  "USER_TABLE_NAME": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"USER_TABLE_NAME\"]"
+                  },
+                  "HypeCardUserPoolId": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"HypeCardUserPoolId\"]"
+                  },
+                  "HypeCardUserPoolClientId": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"HypeCardUserPoolClientId\"]"
+                  },
+                  "UserTableArn": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"UserTableArn\"]"
+                  }
+                }
+              },
+              "Role": {
+                "Fn::GetAtt": [
+                  "LambdaExecutionRole",
+                  "Arn"
+                ]
+              }
+            },
+            "DependsOn": [
+              "RegisterLogGroup",
+              "LambdaExecutionRole"
+            ]
+          },
+          "EmailVerifyLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "Code": {
+                "S3Bucket": {
+                  "Ref": "ServerlessDeploymentBucket"
+                },
+                "S3Key": "serverless/Authentication-API/dev/1696996185109-2023-10-11T03:49:45.109Z/EmailVerify.zip"
+              },
+              "Handler": "functions/triggers/EmailVerify.EmailVerify",
+              "Runtime": "nodejs18.x",
+              "FunctionName": "Authentication-API-dev-EmailVerify",
+              "MemorySize": 1024,
+              "Timeout": 6,
+              "Environment": {
+                "Variables": {
+                  "AVATAR_BUCKET_NAME": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"AVATAR_BUCKET_NAME\"]"
+                  },
+                  "AvtarTable": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"AvtarTable\"]"
+                  },
+                  "USER_TABLE_NAME": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"USER_TABLE_NAME\"]"
+                  },
+                  "HypeCardUserPoolId": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"HypeCardUserPoolId\"]"
+                  },
+                  "HypeCardUserPoolClientId": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"HypeCardUserPoolClientId\"]"
+                  },
+                  "UserTableArn": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"UserTableArn\"]"
+                  }
+                }
+              },
+              "Role": {
+                "Fn::GetAtt": [
+                  "IamRoleLambdaExecution",
+                  "Arn"
+                ]
+              }
+            },
+            "DependsOn": [
+              "EmailVerifyLogGroup"
+            ]
+          },
+          "SaveUserDbLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "Code": {
+                "S3Bucket": {
+                  "Ref": "ServerlessDeploymentBucket"
+                },
+                "S3Key": "serverless/Authentication-API/dev/1696996185109-2023-10-11T03:49:45.109Z/SaveUserDb.zip"
+              },
+              "Handler": "functions/triggers/SaveUserDb.SaveUserDb",
+              "Runtime": "nodejs18.x",
+              "FunctionName": "Authentication-API-dev-SaveUserDb",
+              "MemorySize": 1024,
+              "Timeout": 6,
+              "Environment": {
+                "Variables": {
+                  "AVATAR_BUCKET_NAME": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"AVATAR_BUCKET_NAME\"]"
+                  },
+                  "AvtarTable": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"AvtarTable\"]"
+                  },
+                  "USER_TABLE_NAME": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"USER_TABLE_NAME\"]"
+                  },
+                  "HypeCardUserPoolId": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"HypeCardUserPoolId\"]"
+                  },
+                  "HypeCardUserPoolClientId": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"HypeCardUserPoolClientId\"]"
+                  },
+                  "UserTableArn": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"UserTableArn\"]"
+                  }
+                }
+              },
+              "Role": {
+                "Fn::GetAtt": [
+                  "SaveUserDb",
+                  "Arn"
+                ]
+              }
+            },
+            "DependsOn": [
+              "SaveUserDbLogGroup",
+              "SaveUserDb"
+            ]
+          },
+          "LoginLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "Code": {
+                "S3Bucket": {
+                  "Ref": "ServerlessDeploymentBucket"
+                },
+                "S3Key": "serverless/Authentication-API/dev/1696996185109-2023-10-11T03:49:45.109Z/Login.zip"
+              },
+              "Handler": "functions/Login.Login",
+              "Runtime": "nodejs18.x",
+              "FunctionName": "Authentication-API-dev-Login",
+              "MemorySize": 1024,
+              "Timeout": 6,
+              "Environment": {
+                "Variables": {
+                  "AVATAR_BUCKET_NAME": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"AVATAR_BUCKET_NAME\"]"
+                  },
+                  "AvtarTable": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"AvtarTable\"]"
+                  },
+                  "USER_TABLE_NAME": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"USER_TABLE_NAME\"]"
+                  },
+                  "HypeCardUserPoolId": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"HypeCardUserPoolId\"]"
+                  },
+                  "HypeCardUserPoolClientId": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"HypeCardUserPoolClientId\"]"
+                  },
+                  "UserTableArn": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"UserTableArn\"]"
+                  }
+                }
+              },
+              "Role": {
+                "Fn::GetAtt": [
+                  "LambdaExecutionRole",
+                  "Arn"
+                ]
+              }
+            },
+            "DependsOn": [
+              "LoginLogGroup",
+              "LambdaExecutionRole"
+            ]
+          },
+          "DefineAuthChallengeLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "Code": {
+                "S3Bucket": {
+                  "Ref": "ServerlessDeploymentBucket"
+                },
+                "S3Key": "serverless/Authentication-API/dev/1696996185109-2023-10-11T03:49:45.109Z/DefineAuthChallenge.zip"
+              },
+              "Handler": "functions/triggers/AuthenticationTriggers/DefineAuthChallenge.DefineAuthChallenge",
+              "Runtime": "nodejs18.x",
+              "FunctionName": "Authentication-API-dev-DefineAuthChallenge",
+              "MemorySize": 1024,
+              "Timeout": 6,
+              "Environment": {
+                "Variables": {
+                  "AVATAR_BUCKET_NAME": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"AVATAR_BUCKET_NAME\"]"
+                  },
+                  "AvtarTable": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"AvtarTable\"]"
+                  },
+                  "USER_TABLE_NAME": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"USER_TABLE_NAME\"]"
+                  },
+                  "HypeCardUserPoolId": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"HypeCardUserPoolId\"]"
+                  },
+                  "HypeCardUserPoolClientId": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"HypeCardUserPoolClientId\"]"
+                  },
+                  "UserTableArn": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"UserTableArn\"]"
+                  }
+                }
+              },
+              "Role": {
+                "Fn::GetAtt": [
+                  "IamRoleLambdaExecution",
+                  "Arn"
+                ]
+              }
+            },
+            "DependsOn": [
+              "DefineAuthChallengeLogGroup"
+            ]
+          },
+          "CreateAuthChallengeLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "Code": {
+                "S3Bucket": {
+                  "Ref": "ServerlessDeploymentBucket"
+                },
+                "S3Key": "serverless/Authentication-API/dev/1696996185109-2023-10-11T03:49:45.109Z/CreateAuthChallenge.zip"
+              },
+              "Handler": "functions/triggers/AuthenticationTriggers/CreateAuthChallenge.CreateAuthChallenge",
+              "Runtime": "nodejs18.x",
+              "FunctionName": "Authentication-API-dev-CreateAuthChallenge",
+              "MemorySize": 1024,
+              "Timeout": 6,
+              "Environment": {
+                "Variables": {
+                  "AVATAR_BUCKET_NAME": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"AVATAR_BUCKET_NAME\"]"
+                  },
+                  "AvtarTable": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"AvtarTable\"]"
+                  },
+                  "USER_TABLE_NAME": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"USER_TABLE_NAME\"]"
+                  },
+                  "HypeCardUserPoolId": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"HypeCardUserPoolId\"]"
+                  },
+                  "HypeCardUserPoolClientId": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"HypeCardUserPoolClientId\"]"
+                  },
+                  "UserTableArn": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"UserTableArn\"]"
+                  }
+                }
+              },
+              "Role": {
+                "Fn::GetAtt": [
+                  "IamRoleLambdaExecution",
+                  "Arn"
+                ]
+              }
+            },
+            "DependsOn": [
+              "CreateAuthChallengeLogGroup"
+            ]
+          },
+          "VerifyAuthChallengeResponseLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "Code": {
+                "S3Bucket": {
+                  "Ref": "ServerlessDeploymentBucket"
+                },
+                "S3Key": "serverless/Authentication-API/dev/1696996185109-2023-10-11T03:49:45.109Z/VerifyAuthChallengeResponse.zip"
+              },
+              "Handler": "functions/triggers/AuthenticationTriggers/VerifyAuthChallengeResponse.VerifyAuthChallengeResponse",
+              "Runtime": "nodejs18.x",
+              "FunctionName": "Authentication-API-dev-VerifyAuthChallengeResponse",
+              "MemorySize": 1024,
+              "Timeout": 6,
+              "Environment": {
+                "Variables": {
+                  "AVATAR_BUCKET_NAME": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"AVATAR_BUCKET_NAME\"]"
+                  },
+                  "AvtarTable": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"AvtarTable\"]"
+                  },
+                  "USER_TABLE_NAME": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"USER_TABLE_NAME\"]"
+                  },
+                  "HypeCardUserPoolId": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"HypeCardUserPoolId\"]"
+                  },
+                  "HypeCardUserPoolClientId": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"HypeCardUserPoolClientId\"]"
+                  },
+                  "UserTableArn": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"UserTableArn\"]"
+                  }
+                }
+              },
+              "Role": {
+                "Fn::GetAtt": [
+                  "LambdaExecutionRole",
+                  "Arn"
+                ]
+              }
+            },
+            "DependsOn": [
+              "VerifyAuthChallengeResponseLogGroup",
+              "LambdaExecutionRole"
+            ]
+          },
+          "RespondtoAuthChellengeLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "Code": {
+                "S3Bucket": {
+                  "Ref": "ServerlessDeploymentBucket"
+                },
+                "S3Key": "serverless/Authentication-API/dev/1696996185109-2023-10-11T03:49:45.109Z/RespondtoAuthChellenge.zip"
+              },
+              "Handler": "functions/triggers/RespondtoAuthChellenge.RespondtoAuthChellenge",
+              "Runtime": "nodejs18.x",
+              "FunctionName": "Authentication-API-dev-RespondtoAuthChellenge",
+              "MemorySize": 1024,
+              "Timeout": 6,
+              "Environment": {
+                "Variables": {
+                  "AVATAR_BUCKET_NAME": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"AVATAR_BUCKET_NAME\"]"
+                  },
+                  "AvtarTable": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"AvtarTable\"]"
+                  },
+                  "USER_TABLE_NAME": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"USER_TABLE_NAME\"]"
+                  },
+                  "HypeCardUserPoolId": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"HypeCardUserPoolId\"]"
+                  },
+                  "HypeCardUserPoolClientId": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"HypeCardUserPoolClientId\"]"
+                  },
+                  "UserTableArn": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"UserTableArn\"]"
+                  }
+                }
+              },
+              "Role": {
+                "Fn::GetAtt": [
+                  "LambdaExecutionRole",
+                  "Arn"
+                ]
+              }
+            },
+            "DependsOn": [
+              "RespondtoAuthChellengeLogGroup",
+              "LambdaExecutionRole"
+            ]
+          },
+          "RegisterLambdaVersion3w5KFBBGpGWr8ZCfwsvVpEbcWzzdPaui23k7i4M2hs": {
+            "Type": "AWS::Lambda::Version",
+            "DeletionPolicy": "Retain",
+            "Properties": {
+              "FunctionName": {
+                "Ref": "RegisterLambdaFunction"
+              },
+              "CodeSha256": "Jnyipoe2IaC747tSkphwzvAY/RyMooVC5v0GKIRCJx0="
+            }
+          },
+          "EmailVerifyLambdaVersionLptrTZjrtyve0Uy6eMYHZWhuUsPzvKlK8GN1m6QWXU": {
+            "Type": "AWS::Lambda::Version",
+            "DeletionPolicy": "Retain",
+            "Properties": {
+              "FunctionName": {
+                "Ref": "EmailVerifyLambdaFunction"
+              },
+              "CodeSha256": "0UiCuJ4Uguw3SVNyUOduI7BCzNwpe5GJpI1okjtOMMU="
+            }
+          },
+          "SaveUserDbLambdaVersion8qiRQVFaGyIf8p6laH95Yb8nkapZ66K3oUwIXTGdBs": {
+            "Type": "AWS::Lambda::Version",
+            "DeletionPolicy": "Retain",
+            "Properties": {
+              "FunctionName": {
+                "Ref": "SaveUserDbLambdaFunction"
+              },
+              "CodeSha256": "GDKPfHfD3IY0Q2yWjx9PLR5vf5WXZb9orBcec2n3vXM="
+            }
+          },
+          "LoginLambdaVersiondxYYj7h5zPiSNLFamcIBJrq11YliVvhR7VK43o7lEVE": {
+            "Type": "AWS::Lambda::Version",
+            "DeletionPolicy": "Retain",
+            "Properties": {
+              "FunctionName": {
+                "Ref": "LoginLambdaFunction"
+              },
+              "CodeSha256": "oa6UJlaQGoXSY5+IonKMEWAX6QpicTa3wBwPGILXEUo="
+            }
+          },
+          "DefineAuthChallengeLambdaVersionZZRaS1GC7Iwc4cGmSbP5jCyStmP9vI48hYSIMsQFMs": {
+            "Type": "AWS::Lambda::Version",
+            "DeletionPolicy": "Retain",
+            "Properties": {
+              "FunctionName": {
+                "Ref": "DefineAuthChallengeLambdaFunction"
+              },
+              "CodeSha256": "WC83NjJd3APXryCLUXFrzLlgwHlW0uvfIdW6ChxuYps="
+            }
+          },
+          "CreateAuthChallengeLambdaVersionPEr4ugU1098BOq6Dhgbw8vhOkBqCAZFgghSnThFgY": {
+            "Type": "AWS::Lambda::Version",
+            "DeletionPolicy": "Retain",
+            "Properties": {
+              "FunctionName": {
+                "Ref": "CreateAuthChallengeLambdaFunction"
+              },
+              "CodeSha256": "e1BrfGqEEpcJY8gikiqV0+3s2Ggwns8BfSRj0Igd1Mk="
+            }
+          },
+          "VerifyAuthChallengeResponseLambdaVersionUYF4sCMveN4AYi7HvxSKat6WL8WN0U7Ixh1GwMH9Sc": {
+            "Type": "AWS::Lambda::Version",
+            "DeletionPolicy": "Retain",
+            "Properties": {
+              "FunctionName": {
+                "Ref": "VerifyAuthChallengeResponseLambdaFunction"
+              },
+              "CodeSha256": "w/7ouh5u579jDu3atCJDERAeTnPEKik67gqQB6kMBO8="
+            }
+          },
+          "RespondtoAuthChellengeLambdaVersionp6dFXVd4qMJI2f063c0AujXnH98CAfnNCtYdaPdxU": {
+            "Type": "AWS::Lambda::Version",
+            "DeletionPolicy": "Retain",
+            "Properties": {
+              "FunctionName": {
+                "Ref": "RespondtoAuthChellengeLambdaFunction"
+              },
+              "CodeSha256": "s2Y6PRLRKhwrMDhYMgGrWsxbJxP+v6DBJ/7kSH4hb3w="
+            }
+          },
+          "ApiGatewayRestApi": {
+            "Type": "AWS::ApiGateway::RestApi",
+            "Properties": {
+              "Name": "dev-Authentication-API",
+              "EndpointConfiguration": {
+                "Types": [
+                  "EDGE"
+                ]
+              },
+              "Policy": ""
+            }
+          },
+          "ApiGatewayResourceRegister": {
+            "Type": "AWS::ApiGateway::Resource",
+            "Properties": {
+              "ParentId": {
+                "Fn::GetAtt": [
+                  "ApiGatewayRestApi",
+                  "RootResourceId"
+                ]
+              },
+              "PathPart": "Register",
+              "RestApiId": {
+                "Ref": "ApiGatewayRestApi"
+              }
+            }
+          },
+          "ApiGatewayResourceLogin": {
+            "Type": "AWS::ApiGateway::Resource",
+            "Properties": {
+              "ParentId": {
+                "Fn::GetAtt": [
+                  "ApiGatewayRestApi",
+                  "RootResourceId"
+                ]
+              },
+              "PathPart": "Login",
+              "RestApiId": {
+                "Ref": "ApiGatewayRestApi"
+              }
+            }
+          },
+          "ApiGatewayResourceRespondtoauthchellenge": {
+            "Type": "AWS::ApiGateway::Resource",
+            "Properties": {
+              "ParentId": {
+                "Fn::GetAtt": [
+                  "ApiGatewayRestApi",
+                  "RootResourceId"
+                ]
+              },
+              "PathPart": "RespondtoAuthChellenge",
+              "RestApiId": {
+                "Ref": "ApiGatewayRestApi"
+              }
+            }
+          },
+          "ApiGatewayMethodRegisterOptions": {
+            "Type": "AWS::ApiGateway::Method",
+            "Properties": {
+              "AuthorizationType": "NONE",
+              "HttpMethod": "OPTIONS",
+              "MethodResponses": [
+                {
+                  "StatusCode": "200",
+                  "ResponseParameters": {
+                    "method.response.header.Access-Control-Allow-Origin": true,
+                    "method.response.header.Access-Control-Allow-Headers": true,
+                    "method.response.header.Access-Control-Allow-Methods": true
+                  },
+                  "ResponseModels": {}
+                }
+              ],
+              "RequestParameters": {},
+              "Integration": {
+                "Type": "MOCK",
+                "RequestTemplates": {
+                  "application/json": "{statusCode:200}"
+                },
+                "ContentHandling": "CONVERT_TO_TEXT",
+                "IntegrationResponses": [
+                  {
+                    "StatusCode": "200",
+                    "ResponseParameters": {
+                      "method.response.header.Access-Control-Allow-Origin": "'*'",
+                      "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent,X-Amzn-Trace-Id'",
+                      "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,POST'"
+                    },
+                    "ResponseTemplates": {
+                      "application/json": ""
+                    }
+                  }
+                ]
+              },
+              "ResourceId": {
+                "Ref": "ApiGatewayResourceRegister"
+              },
+              "RestApiId": {
+                "Ref": "ApiGatewayRestApi"
+              }
+            }
+          },
+          "ApiGatewayMethodLoginOptions": {
+            "Type": "AWS::ApiGateway::Method",
+            "Properties": {
+              "AuthorizationType": "NONE",
+              "HttpMethod": "OPTIONS",
+              "MethodResponses": [
+                {
+                  "StatusCode": "200",
+                  "ResponseParameters": {
+                    "method.response.header.Access-Control-Allow-Origin": true,
+                    "method.response.header.Access-Control-Allow-Headers": true,
+                    "method.response.header.Access-Control-Allow-Methods": true
+                  },
+                  "ResponseModels": {}
+                }
+              ],
+              "RequestParameters": {},
+              "Integration": {
+                "Type": "MOCK",
+                "RequestTemplates": {
+                  "application/json": "{statusCode:200}"
+                },
+                "ContentHandling": "CONVERT_TO_TEXT",
+                "IntegrationResponses": [
+                  {
+                    "StatusCode": "200",
+                    "ResponseParameters": {
+                      "method.response.header.Access-Control-Allow-Origin": "'*'",
+                      "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent,X-Amzn-Trace-Id'",
+                      "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,POST'"
+                    },
+                    "ResponseTemplates": {
+                      "application/json": ""
+                    }
+                  }
+                ]
+              },
+              "ResourceId": {
+                "Ref": "ApiGatewayResourceLogin"
+              },
+              "RestApiId": {
+                "Ref": "ApiGatewayRestApi"
+              }
+            }
+          },
+          "ApiGatewayMethodRespondtoauthchellengeOptions": {
+            "Type": "AWS::ApiGateway::Method",
+            "Properties": {
+              "AuthorizationType": "NONE",
+              "HttpMethod": "OPTIONS",
+              "MethodResponses": [
+                {
+                  "StatusCode": "200",
+                  "ResponseParameters": {
+                    "method.response.header.Access-Control-Allow-Origin": true,
+                    "method.response.header.Access-Control-Allow-Headers": true,
+                    "method.response.header.Access-Control-Allow-Methods": true
+                  },
+                  "ResponseModels": {}
+                }
+              ],
+              "RequestParameters": {},
+              "Integration": {
+                "Type": "MOCK",
+                "RequestTemplates": {
+                  "application/json": "{statusCode:200}"
+                },
+                "ContentHandling": "CONVERT_TO_TEXT",
+                "IntegrationResponses": [
+                  {
+                    "StatusCode": "200",
+                    "ResponseParameters": {
+                      "method.response.header.Access-Control-Allow-Origin": "'*'",
+                      "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent,X-Amzn-Trace-Id'",
+                      "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,POST'"
+                    },
+                    "ResponseTemplates": {
+                      "application/json": ""
+                    }
+                  }
+                ]
+              },
+              "ResourceId": {
+                "Ref": "ApiGatewayResourceRespondtoauthchellenge"
+              },
+              "RestApiId": {
+                "Ref": "ApiGatewayRestApi"
+              }
+            }
+          },
+          "ApiGatewayMethodRegisterPost": {
+            "Type": "AWS::ApiGateway::Method",
+            "Properties": {
+              "HttpMethod": "POST",
+              "RequestParameters": {},
+              "ResourceId": {
+                "Ref": "ApiGatewayResourceRegister"
+              },
+              "RestApiId": {
+                "Ref": "ApiGatewayRestApi"
+              },
+              "ApiKeyRequired": false,
+              "AuthorizationType": "NONE",
+              "Integration": {
+                "IntegrationHttpMethod": "POST",
+                "Type": "AWS_PROXY",
+                "Uri": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":apigateway:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":lambda:path/2015-03-31/functions/",
+                      {
+                        "Fn::GetAtt": [
+                          "RegisterLambdaFunction",
+                          "Arn"
+                        ]
+                      },
+                      "/invocations"
+                    ]
+                  ]
+                }
+              },
+              "MethodResponses": []
+            },
+            "DependsOn": [
+              "RegisterLambdaPermissionApiGateway"
+            ]
+          },
+          "ApiGatewayMethodLoginPost": {
+            "Type": "AWS::ApiGateway::Method",
+            "Properties": {
+              "HttpMethod": "POST",
+              "RequestParameters": {},
+              "ResourceId": {
+                "Ref": "ApiGatewayResourceLogin"
+              },
+              "RestApiId": {
+                "Ref": "ApiGatewayRestApi"
+              },
+              "ApiKeyRequired": false,
+              "AuthorizationType": "NONE",
+              "Integration": {
+                "IntegrationHttpMethod": "POST",
+                "Type": "AWS_PROXY",
+                "Uri": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":apigateway:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":lambda:path/2015-03-31/functions/",
+                      {
+                        "Fn::GetAtt": [
+                          "LoginLambdaFunction",
+                          "Arn"
+                        ]
+                      },
+                      "/invocations"
+                    ]
+                  ]
+                }
+              },
+              "MethodResponses": []
+            },
+            "DependsOn": [
+              "LoginLambdaPermissionApiGateway"
+            ]
+          },
+          "ApiGatewayMethodRespondtoauthchellengePost": {
+            "Type": "AWS::ApiGateway::Method",
+            "Properties": {
+              "HttpMethod": "POST",
+              "RequestParameters": {},
+              "ResourceId": {
+                "Ref": "ApiGatewayResourceRespondtoauthchellenge"
+              },
+              "RestApiId": {
+                "Ref": "ApiGatewayRestApi"
+              },
+              "ApiKeyRequired": false,
+              "AuthorizationType": "NONE",
+              "Integration": {
+                "IntegrationHttpMethod": "POST",
+                "Type": "AWS_PROXY",
+                "Uri": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":apigateway:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":lambda:path/2015-03-31/functions/",
+                      {
+                        "Fn::GetAtt": [
+                          "RespondtoAuthChellengeLambdaFunction",
+                          "Arn"
+                        ]
+                      },
+                      "/invocations"
+                    ]
+                  ]
+                }
+              },
+              "MethodResponses": []
+            },
+            "DependsOn": [
+              "RespondtoAuthChellengeLambdaPermissionApiGateway"
+            ]
+          },
+          "ApiGatewayDeployment1696996183997": {
+            "Type": "AWS::ApiGateway::Deployment",
+            "Properties": {
+              "RestApiId": {
+                "Ref": "ApiGatewayRestApi"
+              },
+              "StageName": "dev"
+            },
+            "DependsOn": [
+              "ApiGatewayMethodRegisterOptions",
+              "ApiGatewayMethodLoginOptions",
+              "ApiGatewayMethodRespondtoauthchellengeOptions",
+              "ApiGatewayMethodRegisterPost",
+              "ApiGatewayMethodLoginPost",
+              "ApiGatewayMethodRespondtoauthchellengePost"
+            ]
+          },
+          "RegisterLambdaPermissionApiGateway": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+              "FunctionName": {
+                "Fn::GetAtt": [
+                  "RegisterLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "Action": "lambda:InvokeFunction",
+              "Principal": "apigateway.amazonaws.com",
+              "SourceArn": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":execute-api:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":",
+                    {
+                      "Ref": "ApiGatewayRestApi"
+                    },
+                    "/*/*"
+                  ]
+                ]
+              }
+            }
+          },
+          "LoginLambdaPermissionApiGateway": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+              "FunctionName": {
+                "Fn::GetAtt": [
+                  "LoginLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "Action": "lambda:InvokeFunction",
+              "Principal": "apigateway.amazonaws.com",
+              "SourceArn": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":execute-api:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":",
+                    {
+                      "Ref": "ApiGatewayRestApi"
+                    },
+                    "/*/*"
+                  ]
+                ]
+              }
+            }
+          },
+          "RespondtoAuthChellengeLambdaPermissionApiGateway": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+              "FunctionName": {
+                "Fn::GetAtt": [
+                  "RespondtoAuthChellengeLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "Action": "lambda:InvokeFunction",
+              "Principal": "apigateway.amazonaws.com",
+              "SourceArn": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":execute-api:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":",
+                    {
+                      "Ref": "ApiGatewayRestApi"
+                    },
+                    "/*/*"
+                  ]
+                ]
+              }
+            }
+          },
+          "CognitoUserPoolHYPECARDUSERS": {
+            "Type": "AWS::Cognito::UserPool",
+            "Properties": {
+              "UserPoolName": "HYPECARD-USERS",
+              "LambdaConfig": {
+                "PreSignUp": {
+                  "Fn::GetAtt": [
+                    "RegisterLambdaFunction",
+                    "Arn"
+                  ]
+                },
+                "PreAuthentication": {
+                  "Fn::GetAtt": [
+                    "LoginLambdaFunction",
+                    "Arn"
+                  ]
+                }
+              }
+            },
+            "DependsOn": [
+              "RegisterLambdaFunction",
+              "LoginLambdaFunction"
+            ]
+          },
+          "RegisterLambdaPermissionCognitoUserPoolHYPECARDUSERSTriggerSourcePreSignUp": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+              "FunctionName": {
+                "Fn::GetAtt": [
+                  "RegisterLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "Action": "lambda:InvokeFunction",
+              "Principal": "cognito-idp.amazonaws.com",
+              "SourceArn": {
+                "Fn::GetAtt": [
+                  "CognitoUserPoolHYPECARDUSERS",
+                  "Arn"
+                ]
+              }
+            }
+          },
+          "LoginLambdaPermissionCognitoUserPoolHYPECARDUSERSTriggerSourcePreAuthentication": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+              "FunctionName": {
+                "Fn::GetAtt": [
+                  "LoginLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "Action": "lambda:InvokeFunction",
+              "Principal": "cognito-idp.amazonaws.com",
+              "SourceArn": {
+                "Fn::GetAtt": [
+                  "CognitoUserPoolHYPECARDUSERS",
+                  "Arn"
+                ]
+              }
+            }
+          },
+          "EmailVerifyCustomCognitoUserPool1": {
+            "Type": "Custom::CognitoUserPool",
+            "Version": 1,
+            "DependsOn": [
+              "EmailVerifyLambdaFunction",
+              "CustomDashresourceDashexistingDashcupLambdaFunction"
+            ],
+            "Properties": {
+              "ServiceToken": {
+                "Fn::GetAtt": [
+                  "CustomDashresourceDashexistingDashcupLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "FunctionName": "Authentication-API-dev-EmailVerify",
+              "UserPoolName": {
+                "Fn::ImportValue": "HypeCardUserPoolName"
+              },
+              "UserPoolConfigs": [
+                {
+                  "Trigger": "PreSignUp"
+                }
+              ]
+            }
+          },
+          "SaveUserDbCustomCognitoUserPool1": {
+            "Type": "Custom::CognitoUserPool",
+            "Version": 1,
+            "DependsOn": [
+              "SaveUserDbLambdaFunction",
+              "CustomDashresourceDashexistingDashcupLambdaFunction",
+              "EmailVerifyCustomCognitoUserPool1"
+            ],
+            "Properties": {
+              "ServiceToken": {
+                "Fn::GetAtt": [
+                  "CustomDashresourceDashexistingDashcupLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "FunctionName": "Authentication-API-dev-SaveUserDb",
+              "UserPoolName": {
+                "Fn::ImportValue": "HypeCardUserPoolName"
+              },
+              "UserPoolConfigs": [
+                {
+                  "Trigger": "PostConfirmation"
+                }
+              ]
+            }
+          },
+          "DefineAuthChallengeCustomCognitoUserPool1": {
+            "Type": "Custom::CognitoUserPool",
+            "Version": 1,
+            "DependsOn": [
+              "DefineAuthChallengeLambdaFunction",
+              "CustomDashresourceDashexistingDashcupLambdaFunction",
+              "SaveUserDbCustomCognitoUserPool1"
+            ],
+            "Properties": {
+              "ServiceToken": {
+                "Fn::GetAtt": [
+                  "CustomDashresourceDashexistingDashcupLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "FunctionName": "Authentication-API-dev-DefineAuthChallenge",
+              "UserPoolName": {
+                "Fn::ImportValue": "HypeCardUserPoolName"
+              },
+              "UserPoolConfigs": [
+                {
+                  "Trigger": "DefineAuthChallenge"
+                }
+              ]
+            }
+          },
+          "CreateAuthChallengeCustomCognitoUserPool1": {
+            "Type": "Custom::CognitoUserPool",
+            "Version": 1,
+            "DependsOn": [
+              "CreateAuthChallengeLambdaFunction",
+              "CustomDashresourceDashexistingDashcupLambdaFunction",
+              "DefineAuthChallengeCustomCognitoUserPool1"
+            ],
+            "Properties": {
+              "ServiceToken": {
+                "Fn::GetAtt": [
+                  "CustomDashresourceDashexistingDashcupLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "FunctionName": "Authentication-API-dev-CreateAuthChallenge",
+              "UserPoolName": {
+                "Fn::ImportValue": "HypeCardUserPoolName"
+              },
+              "UserPoolConfigs": [
+                {
+                  "Trigger": "CreateAuthChallenge"
+                }
+              ]
+            }
+          },
+          "VerifyAuthChallengeResponseCustomCognitoUserPool1": {
+            "Type": "Custom::CognitoUserPool",
+            "Version": 1,
+            "DependsOn": [
+              "VerifyAuthChallengeResponseLambdaFunction",
+              "CustomDashresourceDashexistingDashcupLambdaFunction",
+              "CreateAuthChallengeCustomCognitoUserPool1"
+            ],
+            "Properties": {
+              "ServiceToken": {
+                "Fn::GetAtt": [
+                  "CustomDashresourceDashexistingDashcupLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "FunctionName": "Authentication-API-dev-VerifyAuthChallengeResponse",
+              "UserPoolName": {
+                "Fn::ImportValue": "HypeCardUserPoolName"
+              },
+              "UserPoolConfigs": [
+                {
+                  "Trigger": "VerifyAuthChallengeResponse"
+                }
+              ]
+            }
+          },
+          "IamRoleCustomResourcesLambdaExecution": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+              "AssumeRolePolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Principal": {
+                      "Service": [
+                        "lambda.amazonaws.com"
+                      ]
+                    },
+                    "Action": [
+                      "sts:AssumeRole"
+                    ]
+                  }
+                ]
+              },
+              "Policies": [
+                {
+                  "PolicyName": {
+                    "Fn::Join": [
+                      "-",
+                      [
+                        "dev",
+                        "Authentication-API",
+                        "custom-resources-lambda"
+                      ]
+                    ]
+                  },
+                  "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                      {
+                        "Effect": "Allow",
+                        "Action": [
+                          "logs:CreateLogStream",
+                          "logs:CreateLogGroup",
+                          "logs:TagResource"
+                        ],
+                        "Resource": [
+                          {
+                            "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/Authentication-API-dev*:*"
+                          }
+                        ]
+                      },
+                      {
+                        "Effect": "Allow",
+                        "Action": [
+                          "logs:PutLogEvents"
+                        ],
+                        "Resource": [
+                          {
+                            "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/Authentication-API-dev*:*:*"
+                          }
+                        ]
+                      },
+                      {
+                        "Effect": "Allow",
+                        "Resource": "*",
+                        "Action": [
+                          "cognito-idp:ListUserPools",
+                          "cognito-idp:DescribeUserPool",
+                          "cognito-idp:UpdateUserPool"
+                        ]
+                      },
+                      {
+                        "Effect": "Allow",
+                        "Resource": {
+                          "Fn::Sub": "arn:${AWS::Partition}:lambda:*:*:function:Authentication-API-dev-EmailVerify"
+                        },
+                        "Action": [
+                          "lambda:AddPermission",
+                          "lambda:RemovePermission"
+                        ]
+                      },
+                      {
+                        "Effect": "Allow",
+                        "Resource": {
+                          "Fn::Sub": "arn:${AWS::Partition}:lambda:*:*:function:Authentication-API-dev-SaveUserDb"
+                        },
+                        "Action": [
+                          "lambda:AddPermission",
+                          "lambda:RemovePermission"
+                        ]
+                      },
+                      {
+                        "Effect": "Allow",
+                        "Resource": {
+                          "Fn::Sub": "arn:${AWS::Partition}:lambda:*:*:function:Authentication-API-dev-DefineAuthChallenge"
+                        },
+                        "Action": [
+                          "lambda:AddPermission",
+                          "lambda:RemovePermission"
+                        ]
+                      },
+                      {
+                        "Effect": "Allow",
+                        "Resource": {
+                          "Fn::Sub": "arn:${AWS::Partition}:lambda:*:*:function:Authentication-API-dev-CreateAuthChallenge"
+                        },
+                        "Action": [
+                          "lambda:AddPermission",
+                          "lambda:RemovePermission"
+                        ]
+                      },
+                      {
+                        "Effect": "Allow",
+                        "Resource": {
+                          "Fn::Sub": "arn:${AWS::Partition}:lambda:*:*:function:Authentication-API-dev-VerifyAuthChallengeResponse"
+                        },
+                        "Action": [
+                          "lambda:AddPermission",
+                          "lambda:RemovePermission"
+                        ]
+                      },
+                      {
+                        "Effect": "Allow",
+                        "Resource": {
+                          "Fn::Sub": "arn:${AWS::Partition}:iam::*:role/*"
+                        },
+                        "Action": [
+                          "iam:PassRole"
+                        ]
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          },
+          "CustomDashresourceDashexistingDashcupLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "Code": {
+                "S3Bucket": {
+                  "Ref": "ServerlessDeploymentBucket"
+                },
+                "S3Key": "serverless/Authentication-API/dev/1696996185109-2023-10-11T03:49:45.109Z/custom-resources.zip"
+              },
+              "FunctionName": "Authentication-API-dev-custom-resource-existing-cup",
+              "Handler": "cognito-user-pool/handler.handler",
+              "MemorySize": 1024,
+              "Runtime": "nodejs16.x",
+              "Timeout": 180,
+              "Role": {
+                "Fn::GetAtt": [
+                  "IamRoleCustomResourcesLambdaExecution",
+                  "Arn"
+                ]
+              }
+            },
+            "DependsOn": [
+              "IamRoleCustomResourcesLambdaExecution",
+              "CustomDashresourceDashexistingDashcupLogGroup"
+            ]
+          },
+          "CustomDashresourceDashexistingDashcupLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "LogGroupName": "/aws/lambda/Authentication-API-dev-custom-resource-existing-cup"
+            }
+          },
+          "LambdaExecutionRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+              "RoleName": "dev-lambdaRole",
+              "AssumeRolePolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Principal": {
+                      "Service": [
+                        "lambda.amazonaws.com"
+                      ]
+                    },
+                    "Action": [
+                      "sts:AssumeRole"
+                    ]
+                  }
+                ]
+              },
+              "Policies": [
+                {
+                  "PolicyName": "LambdaCognitoPermissions",
+                  "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                      {
+                        "Effect": "Allow",
+                        "Action": [
+                          "cognito-idp:ListUsers",
+                          "cognito-idp:AdminCreateUser",
+                          "cognito-idp:AdminGetUser",
+                          "cognito-idp:AdminDeleteUser",
+                          "cognito-idp:AdminUpdateUserAttributes",
+                          "cognito-idp:AdminAddUserToGroup",
+                          "logs:CreateLogGroup",
+                          "logs:CreateLogStream",
+                          "logs:PutLogEvents"
+                        ],
+                        "Resource": "*"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          },
+          "SaveUserDb": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+              "RoleName": "SaveUserDb",
+              "AssumeRolePolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Principal": {
+                      "Service": [
+                        "lambda.amazonaws.com"
+                      ]
+                    },
+                    "Action": [
+                      "sts:AssumeRole"
+                    ]
+                  }
+                ]
+              },
+              "Policies": [
+                {
+                  "PolicyName": "SaveUserDbPolicy",
+                  "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                      {
+                        "Effect": "Allow",
+                        "Action": [
+                          "dynamodb:GetItem",
+                          "dynamodb:PutItem"
+                        ],
+                        "Resource": {
+                          "Fn::ImportValue": "UserTableArn"
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "Outputs": {
+          "ServerlessDeploymentBucketName": {
+            "Value": {
+              "Ref": "ServerlessDeploymentBucket"
+            },
+            "Export": {
+              "Name": "sls-Authentication-API-dev-ServerlessDeploymentBucketName"
+            }
+          },
+          "RegisterLambdaFunctionQualifiedArn": {
+            "Description": "Current Lambda function version",
+            "Value": {
+              "Ref": "RegisterLambdaVersion3w5KFBBGpGWr8ZCfwsvVpEbcWzzdPaui23k7i4M2hs"
+            },
+            "Export": {
+              "Name": "sls-Authentication-API-dev-RegisterLambdaFunctionQualifiedArn"
+            }
+          },
+          "EmailVerifyLambdaFunctionQualifiedArn": {
+            "Description": "Current Lambda function version",
+            "Value": {
+              "Ref": "EmailVerifyLambdaVersionLptrTZjrtyve0Uy6eMYHZWhuUsPzvKlK8GN1m6QWXU"
+            },
+            "Export": {
+              "Name": "sls-Authentication-API-dev-EmailVerifyLambdaFunctionQualifiedArn"
+            }
+          },
+          "SaveUserDbLambdaFunctionQualifiedArn": {
+            "Description": "Current Lambda function version",
+            "Value": {
+              "Ref": "SaveUserDbLambdaVersion8qiRQVFaGyIf8p6laH95Yb8nkapZ66K3oUwIXTGdBs"
+            },
+            "Export": {
+              "Name": "sls-Authentication-API-dev-SaveUserDbLambdaFunctionQualifiedArn"
+            }
+          },
+          "LoginLambdaFunctionQualifiedArn": {
+            "Description": "Current Lambda function version",
+            "Value": {
+              "Ref": "LoginLambdaVersiondxYYj7h5zPiSNLFamcIBJrq11YliVvhR7VK43o7lEVE"
+            },
+            "Export": {
+              "Name": "sls-Authentication-API-dev-LoginLambdaFunctionQualifiedArn"
+            }
+          },
+          "DefineAuthChallengeLambdaFunctionQualifiedArn": {
+            "Description": "Current Lambda function version",
+            "Value": {
+              "Ref": "DefineAuthChallengeLambdaVersionZZRaS1GC7Iwc4cGmSbP5jCyStmP9vI48hYSIMsQFMs"
+            },
+            "Export": {
+              "Name": "sls-Authentication-API-dev-DefineAuthChallengeLambdaFunctionQualifiedArn"
+            }
+          },
+          "CreateAuthChallengeLambdaFunctionQualifiedArn": {
+            "Description": "Current Lambda function version",
+            "Value": {
+              "Ref": "CreateAuthChallengeLambdaVersionPEr4ugU1098BOq6Dhgbw8vhOkBqCAZFgghSnThFgY"
+            },
+            "Export": {
+              "Name": "sls-Authentication-API-dev-CreateAuthChallengeLambdaFunctionQualifiedArn"
+            }
+          },
+          "VerifyAuthChallengeResponseLambdaFunctionQualifiedArn": {
+            "Description": "Current Lambda function version",
+            "Value": {
+              "Ref": "VerifyAuthChallengeResponseLambdaVersionUYF4sCMveN4AYi7HvxSKat6WL8WN0U7Ixh1GwMH9Sc"
+            },
+            "Export": {
+              "Name": "sls-Authentication-API-dev-VerifyAuthChallengeResponseLambdaFunctionQualifiedArn"
+            }
+          },
+          "RespondtoAuthChellengeLambdaFunctionQualifiedArn": {
+            "Description": "Current Lambda function version",
+            "Value": {
+              "Ref": "RespondtoAuthChellengeLambdaVersionp6dFXVd4qMJI2f063c0AujXnH98CAfnNCtYdaPdxU"
+            },
+            "Export": {
+              "Name": "sls-Authentication-API-dev-RespondtoAuthChellengeLambdaFunctionQualifiedArn"
+            }
+          },
+          "ServiceEndpoint": {
+            "Description": "URL of the service endpoint",
+            "Value": {
+              "Fn::Join": [
+                "",
+                [
+                  "https://",
+                  {
+                    "Ref": "ApiGatewayRestApi"
+                  },
+                  ".execute-api.",
+                  {
+                    "Ref": "AWS::Region"
+                  },
+                  ".",
+                  {
+                    "Ref": "AWS::URLSuffix"
+                  },
+                  "/dev"
+                ]
+              ]
+            },
+            "Export": {
+              "Name": "sls-Authentication-API-dev-ServiceEndpoint"
+            }
+          },
+          "ApiGatewayRestApiWaf": {
+            "Description": "Rest API Id",
+            "Value": {
+              "Ref": "ApiGatewayRestApi"
+            },
+            "Export": {
+              "Name": "sls-Authentication-API-dev-ApiGatewayRestApiWaf"
+            }
+          }
+        }
+      },
+      "coreCloudFormationTemplate": {
+        "AWSTemplateFormatVersion": "2010-09-09",
+        "Description": "The AWS CloudFormation template for this Serverless application",
+        "Resources": {
+          "ServerlessDeploymentBucket": {
+            "Type": "AWS::S3::Bucket",
+            "Properties": {
+              "BucketEncryption": {
+                "ServerSideEncryptionConfiguration": [
+                  {
+                    "ServerSideEncryptionByDefault": {
+                      "SSEAlgorithm": "AES256"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "ServerlessDeploymentBucketPolicy": {
+            "Type": "AWS::S3::BucketPolicy",
+            "Properties": {
+              "Bucket": {
+                "Ref": "ServerlessDeploymentBucket"
+              },
+              "PolicyDocument": {
+                "Statement": [
+                  {
+                    "Action": "s3:*",
+                    "Effect": "Deny",
+                    "Principal": "*",
+                    "Resource": [
+                      {
+                        "Fn::Join": [
+                          "",
+                          [
+                            "arn:",
+                            {
+                              "Ref": "AWS::Partition"
+                            },
+                            ":s3:::",
+                            {
+                              "Ref": "ServerlessDeploymentBucket"
+                            },
+                            "/*"
+                          ]
+                        ]
+                      },
+                      {
+                        "Fn::Join": [
+                          "",
+                          [
+                            "arn:",
+                            {
+                              "Ref": "AWS::Partition"
+                            },
+                            ":s3:::",
+                            {
+                              "Ref": "ServerlessDeploymentBucket"
+                            }
+                          ]
+                        ]
+                      }
+                    ],
+                    "Condition": {
+                      "Bool": {
+                        "aws:SecureTransport": false
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "Outputs": {
+          "ServerlessDeploymentBucketName": {
+            "Value": {
+              "Ref": "ServerlessDeploymentBucket"
+            }
+          }
+        }
+      },
+      "vpc": {}
+    },
+    "custom": {
+      "AVATAR_BUCKET_NAME": {
+        "Fn::ImportValue": {
+          "Fn::Sub": "hypetask-avtar-bucket"
+        }
+      },
+      "UserTable": {
+        "Fn::ImportValue": {
+          "Fn::Sub": "UserTable"
+        }
+      },
+      "ImageBucket": {
+        "Fn::ImportValue": {
+          "Fn::Sub": "hypetask-avtar-bucket"
+        }
+      },
+      "AvtarTable": {
+        "Fn::ImportValue": {
+          "Fn::Sub": "AvatarTable"
+        }
+      },
+      "HypeCardUserPoolId": {
+        "Fn::ImportValue": {
+          "Fn::Sub": "HypeCardUserPoolId"
+        }
+      },
+      "HypecardUserPoolName": {
+        "Fn::ImportValue": "HypeCardUserPoolName"
+      },
+      "UserTableArn": {
+        "Fn::ImportValue": "UserTableArn"
+      },
+      "SnsCallerArn": {
+        "Fn::ImportValue": "SnsCallerArn"
+      },
+      "AssociateWaf": {
+        "name": "Hype-Dev-ACL",
+        "region": "ap-south-1"
+      }
+    },
+    "plugins": [
+      "serverless-offline",
+      "serverless-associate-waf"
+    ],
+    "pluginsData": {},
+    "functions": {
+      "Register": {
+        "handler": "functions/Register.Register",
+        "role": "LambdaExecutionRole",
+        "events": [
+          {
+            "http": {
+              "path": "Register",
+              "method": "post",
+              "cors": {
+                "origin": "*",
+                "methods": [
+                  "OPTIONS",
+                  "POST"
+                ],
+                "headers": [
+                  "Content-Type",
+                  "X-Amz-Date",
+                  "Authorization",
+                  "X-Api-Key",
+                  "X-Amz-Security-Token",
+                  "X-Amz-User-Agent",
+                  "X-Amzn-Trace-Id"
+                ],
+                "allowCredentials": false
+              },
+              "integration": "AWS_PROXY"
+            }
+          },
+          {
+            "cognitoUserPool": {
+              "pool": "HYPECARD-USERS",
+              "trigger": "PreSignUp"
+            }
+          }
+        ],
+        "package": {
+          "individually": true,
+          "patterns": [
+            "!node_modules/**",
+            "!functions/**",
+            "functions/Register.mjs"
+          ],
+          "artifact": "/Users/hypecard/Authetication-Task-Hype/.serverless/Register.zip"
+        },
+        "name": "Authentication-API-dev-Register",
+        "memory": 1024,
+        "timeout": 6,
+        "runtime": "nodejs18.x",
+        "vpc": {},
+        "versionLogicalId": "RegisterLambdaVersion3w5KFBBGpGWr8ZCfwsvVpEbcWzzdPaui23k7i4M2hs"
+      },
+      "EmailVerify": {
+        "handler": "functions/triggers/EmailVerify.EmailVerify",
+        "events": [
+          {
+            "cognitoUserPool": {
+              "pool": {
+                "Fn::ImportValue": "HypeCardUserPoolName"
+              },
+              "trigger": "PreSignUp",
+              "existing": true
+            }
+          }
+        ],
+        "package": {
+          "individually": true,
+          "patterns": [
+            "!node_modules/**",
+            "!functions/**",
+            "functions/triggers/EmailVerify.mjs"
+          ],
+          "artifact": "/Users/hypecard/Authetication-Task-Hype/.serverless/EmailVerify.zip"
+        },
+        "name": "Authentication-API-dev-EmailVerify",
+        "memory": 1024,
+        "timeout": 6,
+        "runtime": "nodejs18.x",
+        "vpc": {},
+        "versionLogicalId": "EmailVerifyLambdaVersionLptrTZjrtyve0Uy6eMYHZWhuUsPzvKlK8GN1m6QWXU"
+      },
+      "SaveUserDb": {
+        "handler": "functions/triggers/SaveUserDb.SaveUserDb",
+        "role": "SaveUserDb",
+        "events": [
+          {
+            "cognitoUserPool": {
+              "pool": {
+                "Fn::ImportValue": "HypeCardUserPoolName"
+              },
+              "trigger": "PostConfirmation",
+              "existing": true
+            }
+          }
+        ],
+        "package": {
+          "individually": true,
+          "patterns": [
+            "!node_modules/**",
+            "!functions/**",
+            "functions/triggers/SaveUserDb.mjs"
+          ],
+          "artifact": "/Users/hypecard/Authetication-Task-Hype/.serverless/SaveUserDb.zip"
+        },
+        "name": "Authentication-API-dev-SaveUserDb",
+        "memory": 1024,
+        "timeout": 6,
+        "runtime": "nodejs18.x",
+        "vpc": {},
+        "versionLogicalId": "SaveUserDbLambdaVersion8qiRQVFaGyIf8p6laH95Yb8nkapZ66K3oUwIXTGdBs"
+      },
+      "Login": {
+        "handler": "functions/Login.Login",
+        "role": "LambdaExecutionRole",
+        "events": [
+          {
+            "http": {
+              "path": "Login",
+              "method": "post",
+              "cors": {
+                "origin": "*",
+                "methods": [
+                  "OPTIONS",
+                  "POST"
+                ],
+                "headers": [
+                  "Content-Type",
+                  "X-Amz-Date",
+                  "Authorization",
+                  "X-Api-Key",
+                  "X-Amz-Security-Token",
+                  "X-Amz-User-Agent",
+                  "X-Amzn-Trace-Id"
+                ],
+                "allowCredentials": false
+              },
+              "integration": "AWS_PROXY"
+            }
+          },
+          {
+            "cognitoUserPool": {
+              "pool": "HYPECARD-USERS",
+              "trigger": "PreAuthentication"
+            }
+          }
+        ],
+        "package": {
+          "individually": true,
+          "patterns": [
+            "!node_modules/**",
+            "!functions/**",
+            "functions/Login.mjs"
+          ],
+          "artifact": "/Users/hypecard/Authetication-Task-Hype/.serverless/Login.zip"
+        },
+        "name": "Authentication-API-dev-Login",
+        "memory": 1024,
+        "timeout": 6,
+        "runtime": "nodejs18.x",
+        "vpc": {},
+        "versionLogicalId": "LoginLambdaVersiondxYYj7h5zPiSNLFamcIBJrq11YliVvhR7VK43o7lEVE"
+      },
+      "DefineAuthChallenge": {
+        "handler": "functions/triggers/AuthenticationTriggers/DefineAuthChallenge.DefineAuthChallenge",
+        "events": [
+          {
+            "cognitoUserPool": {
+              "role": "LambdaExecutionRole",
+              "pool": {
+                "Fn::ImportValue": "HypeCardUserPoolName"
+              },
+              "trigger": "DefineAuthChallenge",
+              "existing": true
+            }
+          }
+        ],
+        "package": {
+          "individually": true,
+          "patterns": [
+            "!node_modules/**",
+            "!functions/**",
+            "functions/triggers/AuthenticationTriggers/DefineAuthChallenge.mjs"
+          ],
+          "artifact": "/Users/hypecard/Authetication-Task-Hype/.serverless/DefineAuthChallenge.zip"
+        },
+        "name": "Authentication-API-dev-DefineAuthChallenge",
+        "memory": 1024,
+        "timeout": 6,
+        "runtime": "nodejs18.x",
+        "vpc": {},
+        "versionLogicalId": "DefineAuthChallengeLambdaVersionZZRaS1GC7Iwc4cGmSbP5jCyStmP9vI48hYSIMsQFMs"
+      },
+      "CreateAuthChallenge": {
+        "handler": "functions/triggers/AuthenticationTriggers/CreateAuthChallenge.CreateAuthChallenge",
+        "events": [
+          {
+            "cognitoUserPool": {
+              "pool": {
+                "Fn::ImportValue": "HypeCardUserPoolName"
+              },
+              "trigger": "CreateAuthChallenge",
+              "existing": true
+            }
+          }
+        ],
+        "package": {
+          "individually": true,
+          "patterns": [
+            "!node_modules/**",
+            "!functions/**",
+            "functions/triggers/AuthenticationTriggers/CreateAuthChallenge.mjs"
+          ],
+          "artifact": "/Users/hypecard/Authetication-Task-Hype/.serverless/CreateAuthChallenge.zip"
+        },
+        "name": "Authentication-API-dev-CreateAuthChallenge",
+        "memory": 1024,
+        "timeout": 6,
+        "runtime": "nodejs18.x",
+        "vpc": {},
+        "versionLogicalId": "CreateAuthChallengeLambdaVersionPEr4ugU1098BOq6Dhgbw8vhOkBqCAZFgghSnThFgY"
+      },
+      "VerifyAuthChallengeResponse": {
+        "handler": "functions/triggers/AuthenticationTriggers/VerifyAuthChallengeResponse.VerifyAuthChallengeResponse",
+        "role": "LambdaExecutionRole",
+        "events": [
+          {
+            "cognitoUserPool": {
+              "pool": {
+                "Fn::ImportValue": "HypeCardUserPoolName"
+              },
+              "trigger": "VerifyAuthChallengeResponse",
+              "existing": true
+            }
+          }
+        ],
+        "package": {
+          "individually": true,
+          "patterns": [
+            "!node_modules/**",
+            "!functions/**",
+            "functions/triggers/AuthenticationTriggers/VerifyAuthChallengeResponse.mjs"
+          ],
+          "artifact": "/Users/hypecard/Authetication-Task-Hype/.serverless/VerifyAuthChallengeResponse.zip"
+        },
+        "name": "Authentication-API-dev-VerifyAuthChallengeResponse",
+        "memory": 1024,
+        "timeout": 6,
+        "runtime": "nodejs18.x",
+        "vpc": {},
+        "versionLogicalId": "VerifyAuthChallengeResponseLambdaVersionUYF4sCMveN4AYi7HvxSKat6WL8WN0U7Ixh1GwMH9Sc"
+      },
+      "RespondtoAuthChellenge": {
+        "handler": "functions/triggers/RespondtoAuthChellenge.RespondtoAuthChellenge",
+        "role": "LambdaExecutionRole",
+        "events": [
+          {
+            "http": {
+              "path": "RespondtoAuthChellenge",
+              "method": "post",
+              "cors": {
+                "origin": "*",
+                "methods": [
+                  "OPTIONS",
+                  "POST"
+                ],
+                "headers": [
+                  "Content-Type",
+                  "X-Amz-Date",
+                  "Authorization",
+                  "X-Api-Key",
+                  "X-Amz-Security-Token",
+                  "X-Amz-User-Agent",
+                  "X-Amzn-Trace-Id"
+                ],
+                "allowCredentials": false
+              },
+              "integration": "AWS_PROXY"
+            }
+          }
+        ],
+        "package": {
+          "individually": true,
+          "patterns": [
+            "!node_modules/**",
+            "!functions/**",
+            "functions/triggers/RespondtoAuthChellenge.mjs"
+          ],
+          "artifact": "/Users/hypecard/Authetication-Task-Hype/.serverless/RespondtoAuthChellenge.zip"
+        },
+        "name": "Authentication-API-dev-RespondtoAuthChellenge",
+        "memory": 1024,
+        "timeout": 6,
+        "runtime": "nodejs18.x",
+        "vpc": {},
+        "versionLogicalId": "RespondtoAuthChellengeLambdaVersionp6dFXVd4qMJI2f063c0AujXnH98CAfnNCtYdaPdxU"
+      }
+    },
+    "resources": {
+      "Resources": {
+        "LambdaExecutionRole": {
+          "Type": "AWS::IAM::Role",
+          "Properties": {
+            "RoleName": "dev-lambdaRole",
+            "AssumeRolePolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Principal": {
+                    "Service": [
+                      "lambda.amazonaws.com"
+                    ]
+                  },
+                  "Action": [
+                    "sts:AssumeRole"
+                  ]
+                }
+              ]
+            },
+            "Policies": [
+              {
+                "PolicyName": "LambdaCognitoPermissions",
+                "PolicyDocument": {
+                  "Version": "2012-10-17",
+                  "Statement": [
+                    {
+                      "Effect": "Allow",
+                      "Action": [
+                        "cognito-idp:ListUsers",
+                        "cognito-idp:AdminCreateUser",
+                        "cognito-idp:AdminGetUser",
+                        "cognito-idp:AdminDeleteUser",
+                        "cognito-idp:AdminUpdateUserAttributes",
+                        "cognito-idp:AdminAddUserToGroup",
+                        "logs:CreateLogGroup",
+                        "logs:CreateLogStream",
+                        "logs:PutLogEvents"
+                      ],
+                      "Resource": "*"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        "SaveUserDb": {
+          "Type": "AWS::IAM::Role",
+          "Properties": {
+            "RoleName": "SaveUserDb",
+            "AssumeRolePolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Principal": {
+                    "Service": [
+                      "lambda.amazonaws.com"
+                    ]
+                  },
+                  "Action": [
+                    "sts:AssumeRole"
+                  ]
+                }
+              ]
+            },
+            "Policies": [
+              {
+                "PolicyName": "SaveUserDbPolicy",
+                "PolicyDocument": {
+                  "Version": "2012-10-17",
+                  "Statement": [
+                    {
+                      "Effect": "Allow",
+                      "Action": [
+                        "dynamodb:GetItem",
+                        "dynamodb:PutItem"
+                      ],
+                      "Resource": {
+                        "Fn::ImportValue": "UserTableArn"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      },
+      "Outputs": {}
+    },
+    "configValidationMode": "warn",
+    "serviceFilename": "serverless.yml",
+    "initialServerlessConfig": {
+      "service": "Authentication-API",
+      "provider": {
+        "$ref": "$[\"service\"][\"provider\"]"
+      },
+      "custom": {
+        "$ref": "$[\"service\"][\"custom\"]"
+      },
+      "resources": {
+        "$ref": "$[\"service\"][\"resources\"]"
+      },
+      "functions": {
+        "$ref": "$[\"service\"][\"functions\"]"
+      },
+      "plugins": {
+        "$ref": "$[\"service\"][\"plugins\"]"
+      }
+    },
+    "layers": {},
+    "isDashboardMonitoringPreconfigured": false
+  },
+  "package": {
+    "artifactDirectoryName": "serverless/Authentication-API/dev/1696996185109-2023-10-11T03:49:45.109Z",
+    "artifact": ""
+  }
+}
