@@ -64,6 +64,7 @@ resources:
                 Service:
                   - lambda.amazonaws.com
               Action:
+              
                 - sts:AssumeRole
 
 
