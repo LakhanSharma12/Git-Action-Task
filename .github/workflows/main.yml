@@ -20,8 +20,6 @@ jobs:
     runs-on: [ubuntu-latest, windows-latest, macOS-latest]
     
     steps:
-    - run: npm publish 
-      if: github.event_name == 'push'
       
     - name: Check Out Code
       uses: actions/checkout@v2
@@ -29,11 +27,17 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v2
       with:
-        node-version: nodejs18.x  # You can specify the Node.js version you need
+        node-version: '18.x'# You can specify the Node.js version you need
 
     - name: Install Dependencies
       run: npm install
 
     - name: Run Tests
       run: npm test
-
+  #merged branches jobs     
+  if_merged:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+    - run: |
+        echo The branches are merged was merged
