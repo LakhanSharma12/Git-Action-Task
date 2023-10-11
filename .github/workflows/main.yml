@@ -34,7 +34,7 @@ jobs:
 
     - name: Run Tests
       run: npm test
-  #merged branches jobs     
+  
   if_merged:
     if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
