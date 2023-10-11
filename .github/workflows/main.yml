@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [12.x]
+        node-version: [18.x]
     steps:
     #firest merged with main
     - name: Checkout
@@ -37,7 +37,7 @@ jobs:
     - name: serverless deploy
       uses: serverless/github-action@master
       with:
-        args: deploy --stage dev --region ap-south-1
+        args: deploy 
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
