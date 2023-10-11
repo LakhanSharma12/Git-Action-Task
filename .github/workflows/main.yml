@@ -1,0 +1,39 @@
+name: Node.js CI
+
+on:
+  push:
+    branches:
+      - main # You can specify your main branch name here
+      - dev
+      - test
+  pull_request:
+    branches:
+      - main
+      - dev 
+      - test
+
+
+  
+
+jobs:
+  test:
+    runs-on: [ubuntu-latest, windows-latest, macOS-latest]
+    
+    steps:
+    - run: npm publish 
+      if: github.event_name == 'push'
+      
+    - name: Check Out Code
+      uses: actions/checkout@v2
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v2
+      with:
+        node-version: nodejs18.x  # You can specify the Node.js version you need
+
+    - name: Install Dependencies
+      run: npm install
+
+    - name: Run Tests
+      run: npm test
+
