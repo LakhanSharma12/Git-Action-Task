@@ -253,7 +253,6 @@ functions:
 
 
 plugins:
-  - serverless-offline
   - serverless-associate-waf
                       
 
