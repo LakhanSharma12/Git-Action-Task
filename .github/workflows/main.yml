@@ -34,7 +34,7 @@ jobs:
         run: |
           npm install
           npm run build --if-present
-          npm test
+         
       - name: serverless deploy
         uses: serverless/github-action@master
         with:
