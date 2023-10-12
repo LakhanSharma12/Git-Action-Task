@@ -3,17 +3,15 @@ name: Node.js CI
 on:
   push:
     branches:
-      - main # You can specify your main branch name here
+      - main
       - dev
       - test
   pull_request:
     branches:
       - main
-      - dev 
+      - dev
       - test
 
-
-  
 jobs:
   deploy:
     name: deploy
@@ -22,23 +20,25 @@ jobs:
       matrix:
         node-version: [18.x]
     steps:
-    #firest merged with main
-    - name: Checkout
-      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-      uses: actions/checkout@v2
-    - uses: actions/checkout@v2
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v1
-      with:
-        node-version: ${{ matrix.node-version }}
+      - name: Checkout
+        if: github.event_name == 'push' && github.ref == 'main' # Use 'main' instead of 'refs/heads/main'
 
-    - name: serverless deploy
-      uses: serverless/github-action@master
-      with:
-        args: deploy 
-      env:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        uses: actions/checkout@v2
 
-
-
+      - uses: actions/checkout@v2
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: npm install, build, and test
+        run: |
+          npm install
+          npm run build --if-present
+         
+      - name: serverless deploy
+        uses: serverless/github-action@master
+        with:
+          args: sls deploy
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
